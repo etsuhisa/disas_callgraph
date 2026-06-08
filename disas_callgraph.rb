@@ -218,7 +218,7 @@ Dir::glob("*.txt") do |file|
 			funcs[:callers][func] = [] unless funcs[:callers].key?(func) # 呼び出し元のリストを初期化
 			
 		# call 命令の行を検出 (例:     callq  0x401030 <_printf@plt>)
-		when /\tcallw*\s+\h+\s+<([^>@]+)(@plt)?>/
+		when /\tcall\w* +\h+ \<([^\>@]+)(@plt)?\>/
 			called_func = $1 # 現在の関数 (func) が呼び出す先の関数名
 			
 			# 現在の関数 (func) の呼び出し先リスト (:callees) に called_func を追加
@@ -244,7 +244,7 @@ File::open("callgraph.html", "w") do |f|
 	
 	f.puts "\tcallees: {" # この関数が呼び出す関数 (Callees)
 	funcs[:callees].keys.sort.each do |func_name|
-		f.printf(%Q##\t\t"%s": [\n#, func_name)
+		f.printf(%Q#\t\t"%s": [\n#, func_name)
 		# ユニーク化してソートした呼び出し先関数名を書き出す
 		funcs[:callees][func_name].uniq.sort.each do |callee_name|
 			f.printf(%Q[\t\t\t"%s",\n], callee_name)
