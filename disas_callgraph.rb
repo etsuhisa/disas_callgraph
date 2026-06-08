@@ -194,8 +194,10 @@ document.addEventListener('DOMContentLoaded', () => {
 </html>
 EOS
 
-# :callees はその関数を呼び出す関数（呼び出し先）のリスト
+# プログラム構造を保持するハッシュを初期化。
+# :callees はその関数が呼び出す関数（呼び出し先）のリスト
 # :callers はその関数を呼び出す関数（呼び出し元）のリスト
+# :mod は関数が属するモジュール
 funcs = {:callees => {}, :callers => {}, :mod => {}}
 func = nil # 現在処理中の関数名
 
@@ -204,7 +206,7 @@ Dir::glob("*.txt") do |file|
 	File::foreach(file) do |line|
 		case line
 		# 関数定義の行を検出 (例: 0000000000401120 <_foo>:)
-		when /^\h+ <([^>@]+)(@plt)?>:/
+		when /^\h+ \<([^\>@]+)(@plt)?\>:/
 			# @plt サフィックスがない場合のみ関数名を設定（PLT エントリは対象外）
 			func = $1 if $2.nil? || $2.empty?
 			# 'main' 関数はモジュール名を付加して区別
@@ -215,7 +217,7 @@ Dir::glob("*.txt") do |file|
 			funcs[:callees][func] = [] unless funcs[:callees].key?(func) # 呼び出し先のリストを初期化
 			funcs[:callers][func] = [] unless funcs[:callers].key?(func) # 呼び出し元のリストを初期化
 			
-		# call 命令の行を検出 (例: callq 0x401030 <_printf@plt>)
+		# call 命令の行を検出 (例:     callq  0x401030 <_printf@plt>)
 		when /\tcallw*\s+\h+\s+<([^>@]+)(@plt)?>/
 			called_func = $1 # 現在の関数 (func) が呼び出す先の関数名
 			
@@ -242,7 +244,7 @@ File::open("callgraph.html", "w") do |f|
 	
 	f.puts "\tcallees: {" # この関数が呼び出す関数 (Callees)
 	funcs[:callees].keys.sort.each do |func_name|
-		f.printf("%Q\t\t\"%s\": [\n", func_name)
+		f.printf(%Q##\t\t"%s": [\n#, func_name)
 		# ユニーク化してソートした呼び出し先関数名を書き出す
 		funcs[:callees][func_name].uniq.sort.each do |callee_name|
 			f.printf(%Q[\t\t\t"%s",\n], callee_name)
@@ -250,22 +252,22 @@ File::open("callgraph.html", "w") do |f|
 		f.puts "\t\t],"
 	end
 	f.puts "\t},"
-	
+
 	f.puts "\tcallers: {" # この関数を呼び出している関数 (Callers)
 	funcs[:callers].keys.sort.each do |func_name|
-		f.printf("%Q\t\t\"%s\": [\n", func_name)
+		f.printf(%Q#\t\t"%s": [\n#, func_name)
 		# ユニーク化してソートした呼び出し元関数名を書き出す
 		funcs[:callers][func_name].uniq.sort.each do |caller_name|
-			f.printf(%Q[\t\t\t\"%s\",\n], caller_name)
+			f.printf(%Q[\t\t\t"%s",\n], caller_name)
 		end
 		f.puts "\t\t],"
 	end
-	f.puts "\t}"
+	f.puts "\t},"
 
-	f.puts "\ttmod: {" # 関数のモジュール情報
+	f.puts "\tmod: {" # 関数のモジュール情報
 	funcs[:mod].keys.sort.each do |func_name|
 		mod = funcs[:mod][func_name]
-		f.printf(%Q#\t\t"%s": "%s",\n#, func_name, mod)
+		f.printf(%Q[\t\t"%s": "%s",\n], func_name, mod)
 	end
 	f.puts "\t}"
 	f.puts "}"
